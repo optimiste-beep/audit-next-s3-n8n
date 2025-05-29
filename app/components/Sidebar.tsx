@@ -5,7 +5,7 @@ import { PT_Sans } from "next/font/google";
 import { useState } from "react";
 
 import { cn } from "../lib/utils"
-import { FileUp, ListTodo, ChevronDown, ChevronUp, Database } from "lucide-react";
+import { LayoutDashboard, FileUp, ListTodo, ChevronDown, ChevronUp, Database } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 const ptSans = PT_Sans({
@@ -14,12 +14,12 @@ const ptSans = PT_Sans({
 });
 
 const routes = [
-    // {
-    //     label: "Dashboard",
-    //     icon: LayoutDashboard,
-    //     href: "/dashboard",
-    //     color: "text-zinc-600"
-    // },
+    {
+        label: "Dashboard",
+        icon: LayoutDashboard,
+        href: "/dashboard",
+        color: "text-zinc-600"
+    },
     {
         label: "Tasks",
         icon: ListTodo,
