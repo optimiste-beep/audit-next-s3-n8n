@@ -1,19 +1,21 @@
 import { NextResponse } from "next/server";
-import { listSessionOutputFiles } from "../../lib/s3";
+import { listOutputFiles } from "../../lib/s3";
 
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
+        const orgId = searchParams.get('orgId');
+        const userId = searchParams.get('userId');
         const sessionId = searchParams.get('sessionId');
 
-        if (!sessionId) {
+        if (!orgId || !userId || !sessionId) {
             return NextResponse.json(
-                { error: "Session ID is required" },
+                { error: "Organization ID, User ID, and Session ID are required" },
                 { status: 400 }
             );
         }
 
-        const outputFiles = await listSessionOutputFiles(sessionId);
+        const outputFiles = await listOutputFiles(orgId, userId, sessionId);
 
         return NextResponse.json(outputFiles);
     } catch (error) {

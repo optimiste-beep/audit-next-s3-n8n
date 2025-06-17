@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import { useUser, useAuth, useOrganization } from '@clerk/nextjs';
 import Link from 'next/link';
 
 interface Document {
@@ -11,43 +11,25 @@ interface Document {
 }
 
 export default function UploadPage() {
-    const [sessionId, setSessionId] = useState<string>('');
-    const [uploadStep, setUploadStep] = useState<number>(1); // 1=questionnaire, 2=evidence, 3=complete
+    const { user } = useUser();
+    const { sessionId } = useAuth();
+    const { organization } = useOrganization();
+
+    const [uploadStep, setUploadStep] = useState<number>(1); // 1=evidence, 2=questionnaire, 3=view output
     const [files, setFiles] = useState<File[]>([]);
     const [uploadStatus, setUploadStatus] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [outputDocuments, setOutputDocuments] = useState<Document[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Initialize session ID from localStorage or generate new
-    useEffect(() => {
-        const savedSessionId = localStorage.getItem('sessionId');
-        if (savedSessionId) {
-            setSessionId(savedSessionId);
-        } else {
-            const newSessionId = uuidv4();
-            setSessionId(newSessionId);
-            localStorage.setItem('sessionId', newSessionId);
-        }
-
-        const handleBeforeUnload = () => {
-            localStorage.removeItem('sessionId');
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-        };
-    }, []);
-
     // Poll for output documents
     useEffect(() => {
-        if (!sessionId) return;
+        if (!user?.id || !sessionId || !organization?.id) return;
 
         const fetchOutputDocuments = async () => {
             setLoading(true);
             try {
-                const response = await fetch(`/api/output?sessionId=${sessionId}`);
+                const response = await fetch(`/api/output?orgId=${organization.id}&userId=${user.id}&sessionId=${sessionId}`);
                 if (!response.ok) throw new Error(`Error: ${response.status}`);
 
                 const data = await response.json();
@@ -64,7 +46,7 @@ export default function UploadPage() {
         // Set up polling every 10 seconds
         const interval = setInterval(fetchOutputDocuments, 10000);
         return () => clearInterval(interval);
-    }, [sessionId]);
+    }, [user?.id, sessionId, organization?.id]);
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {
@@ -75,17 +57,24 @@ export default function UploadPage() {
 
     const handleSubmit = async () => {
         if (files.length === 0) {
-            setUploadStatus('Please select a file to upload.');
+            setUploadStatus('Please select files to upload.');
+            return;
+        }
+
+        if (!user?.id || !sessionId || !organization?.id) {
+            setUploadStatus('User authentication required.');
             return;
         }
 
         const formData = new FormData();
         files.forEach((file) => formData.append('documents', file));
+        formData.append('orgId', organization.id);
+        formData.append('userId', user.id);
         formData.append('sessionId', sessionId);
         formData.append('documentType', uploadStep === 1 ? 'evidence' : 'questionnaire');
 
         setIsUploading(true);
-        setUploadStatus(`Uploading ${uploadStep === 1 ? 'evidence' : 'questionnaire'} to S3...`);
+        setUploadStatus(`Uploading ${uploadStep === 1 ? 'evidence' : 'questionnaire'} files...`);
 
         try {
             const response = await fetch('/api/upload', {
@@ -114,7 +103,7 @@ export default function UploadPage() {
             }
         } catch (error) {
             console.error('Upload error:', error);
-            setUploadStatus('Error uploading files to S3. Please try again.');
+            setUploadStatus('Error uploading files. Please try again.');
         } finally {
             setIsUploading(false);
         }
@@ -146,9 +135,27 @@ export default function UploadPage() {
         }
     };
 
+    // Show loading if user data is not available
+    if (!user || !organization) {
+        return (
+            <div className="p-4 max-w-4xl mx-auto">
+                <div className="text-center py-8">
+                    <p>Loading user information...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="p-4 max-w-4xl mx-auto">
-            <h1 className="text-2xl font-bold mb-6">Document Upload</h1>
+        <div className="p-4 max-w-4xl mx-auto mt-10">
+            {/* <div className="mb-6">
+                <h1 className="text-2xl font-bold mb-2">Document Upload</h1>
+                <div className="text-sm text-gray-600">
+                    <p>Organization: <span className="font-medium">{organization.name}</span></p>
+                    <p>User: <span className="font-medium">{user.firstName} {user.lastName}</span></p>
+                    <p>Session: <span className="font-medium">{sessionId}</span></p>
+                </div>
+            </div> */}
 
             {/* Progress indicator */}
             <div className="mb-6">
@@ -156,28 +163,30 @@ export default function UploadPage() {
                     <div className={`flex-none h-8 w-8 rounded-full flex items-center justify-center ${uploadStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'
                         }`}>1</div>
                     <div className="flex-1 h-1 mx-2 bg-gray-200">
-                        <div className={`h-1 ${uploadStep >= 2 ? 'bg-blue-500' : 'bg-gray-200'}`} style={{ width: uploadStep >= 2 ? '100%' : '0%' }}></div>
+                        <div className={`h-1 ${uploadStep >= 2 ? 'bg-blue-500' : 'bg-gray-200'}`}
+                            style={{ width: uploadStep >= 2 ? '100%' : '0%' }}></div>
                     </div>
                     <div className={`flex-none h-8 w-8 rounded-full flex items-center justify-center ${uploadStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-200'
                         }`}>2</div>
                     <div className="flex-1 h-1 mx-2 bg-gray-200">
-                        <div className={`h-1 ${uploadStep >= 3 ? 'bg-blue-500' : 'bg-gray-200'}`} style={{ width: uploadStep >= 3 ? '100%' : '0%' }}></div>
+                        <div className={`h-1 ${uploadStep >= 3 ? 'bg-blue-500' : 'bg-gray-200'}`}
+                            style={{ width: uploadStep >= 3 ? '100%' : '0%' }}></div>
                     </div>
                     <div className={`flex-none h-8 w-8 rounded-full flex items-center justify-center ${uploadStep >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-200'
                         }`}>3</div>
                 </div>
                 <div className="flex justify-between text-sm text-gray-600">
-                    <span>Upload Evidence</span>
-                    <span>Upload Questionnaire</span>
-                    <span>View Output</span>
+                    <span>Upload A Reference Resource</span>
+                    <span>Upload A Questionnaire</span>
+                    <span>Download Results</span>
                 </div>
             </div>
 
             {/* Upload Evidence Step */}
             {uploadStep === 1 && (
-                <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                    <h2 className="text-xl font-semibold mb-4">Upload Evidence</h2>
-                    <p className="text-gray-600 mb-4">Please upload your supporting evidence documents.</p>
+                <div className="bg-white p-6 rounded-lg shadow-md mb-6 mt-8">
+                    <h2 className="text-xl font-semibold mb-4">Upload A Reference Resource</h2>
+                    <p className="text-gray-600 mb-4">Please upload your reference resources. You can select multiple files.</p>
 
                     <div className="mb-4">
                         <input
@@ -187,8 +196,13 @@ export default function UploadPage() {
                             onChange={handleFileUpload}
                             className="border p-2 rounded w-full"
                             disabled={isUploading}
-                            accept=".pdf,.doc,.docx,.txt,.png,.xlsx,.csv"
+                            accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.xlsx,.csv"
                         />
+                        {files.length > 0 && (
+                            <div className="mt-2 text-sm text-gray-600">
+                                Selected {files.length} file(s): {files.map(f => f.name).join(', ')}
+                            </div>
+                        )}
                     </div>
 
                     <button
@@ -199,13 +213,11 @@ export default function UploadPage() {
                             : 'bg-blue-500 hover:bg-blue-600'
                             } text-white px-4 py-2 rounded transition`}
                     >
-                        {isUploading ? 'Uploading...' : 'Upload Evidence & Complete'}
+                        {isUploading ? 'Uploading...' : 'Upload Reference Resource & Continue'}
                     </button>
 
                     {uploadStatus && (
-                        <p className={`mt-2 text-sm ${uploadStatus.includes('Error')
-                            ? 'text-red-500'
-                            : 'text-green-500'
+                        <p className={`mt-2 text-sm ${uploadStatus.includes('Error') ? 'text-red-500' : 'text-green-500'
                             }`}>
                             {uploadStatus}
                         </p>
@@ -216,8 +228,8 @@ export default function UploadPage() {
             {/* Upload Questionnaire Step */}
             {uploadStep === 2 && (
                 <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                    <h2 className="text-xl font-semibold mb-4">Upload Questionnaire</h2>
-                    <p className="text-gray-600 mb-4">Now, please upload your questionnaire document.</p>
+                    <h2 className="text-xl font-semibold mb-4">Upload A Questionnaire</h2>
+                    <p className="text-gray-600 mb-4">Now, please upload your questionnaire. You can select multiple files.</p>
 
                     <div className="mb-4">
                         <input
@@ -227,8 +239,13 @@ export default function UploadPage() {
                             onChange={handleFileUpload}
                             className="border p-2 rounded w-full"
                             disabled={isUploading}
-                            accept=".pdf,.doc,.docx,.txt,.png,.xlsx,.csv"
+                            accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.xlsx,.csv"
                         />
+                        {files.length > 0 && (
+                            <div className="mt-2 text-sm text-gray-600">
+                                Selected {files.length} file(s): {files.map(f => f.name).join(', ')}
+                            </div>
+                        )}
                     </div>
 
                     <button
@@ -239,13 +256,11 @@ export default function UploadPage() {
                             : 'bg-blue-500 hover:bg-blue-600'
                             } text-white px-4 py-2 rounded transition`}
                     >
-                        {isUploading ? 'Uploading...' : 'Upload Questionnaire & Continue'}
+                        {isUploading ? 'Uploading...' : 'Upload Questionnaire & Complete'}
                     </button>
 
                     {uploadStatus && (
-                        <p className={`mt-2 text-sm ${uploadStatus.includes('Error')
-                            ? 'text-red-500'
-                            : 'text-green-500'
+                        <p className={`mt-2 text-sm ${uploadStatus.includes('Error') ? 'text-red-500' : 'text-green-500'
                             }`}>
                             {uploadStatus}
                         </p>
@@ -325,3 +340,4 @@ export default function UploadPage() {
         </div>
     );
 }
+

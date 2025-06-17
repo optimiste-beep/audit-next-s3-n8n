@@ -5,10 +5,12 @@ export async function POST(req: Request) {
     try {
         const formData = await req.formData();
         const files = formData.getAll("documents") as File[];
+        const orgId = formData.get("orgId") as string;
+        const userId = formData.get("userId") as string;
         const sessionId = formData.get("sessionId") as string;
         const documentType = formData.get("documentType") as string;
 
-        if (!files.length || !sessionId || !documentType) {
+        if (!files.length || !orgId || !userId || !sessionId || !documentType) {
             return NextResponse.json(
                 { error: "Missing required parameters" },
                 { status: 400 }
@@ -16,7 +18,7 @@ export async function POST(req: Request) {
         }
 
         // Validate document type
-        if (!['questionnaire', 'evidence'].includes(documentType)) {
+        if (!['evidence', 'questionnaire'].includes(documentType)) {
             return NextResponse.json(
                 { error: "Invalid document type" },
                 { status: 400 }
@@ -30,6 +32,8 @@ export async function POST(req: Request) {
 
             const result = await uploadFileToS3(
                 buffer,
+                orgId,
+                userId,
                 sessionId,
                 documentType,
                 file.name,

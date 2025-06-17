@@ -1,16 +1,27 @@
 import { NextResponse } from "next/server";
-import { listS3Files, deleteFileFromS3 } from "../../lib/s3";
+import { listOrgFiles, deleteFileFromS3 } from "../../lib/s3";
+import { auth } from "@clerk/nextjs/server";
 
-// GET all documents (excluding output files)
-export async function GET(req: Request) {
+// GET all documents for the organization (excluding Results)
+export async function GET() {
     try {
-        const { searchParams } = new URL(req.url);
-        console.log(searchParams)
-        // Get all documents
-        const allFiles = await listS3Files();
+        const { userId, orgId } = await auth();
 
-        // Filter out output files
-        const documents = allFiles.filter(file => !file.folder.includes('/output/'));
+        if (!userId || !orgId) {
+            return NextResponse.json(
+                { error: "Authentication required" },
+                { status: 401 }
+            );
+        }
+
+        // Get all documents for the organization
+        const allFiles = await listOrgFiles(orgId);
+
+        // Filter out Results files, only show Documents and Questionnaires
+        const documents = allFiles.filter(file =>
+            !file.folder.includes('/Results/') &&
+            (file.folder.includes('/Documents/') || file.folder.includes('/Questionnaires/'))
+        );
 
         return NextResponse.json(documents);
     } catch (error) {
@@ -25,12 +36,29 @@ export async function GET(req: Request) {
 // DELETE document
 export async function DELETE(req: Request) {
     try {
+        const { userId, orgId } = await auth();
+
+        if (!userId || !orgId) {
+            return NextResponse.json(
+                { error: "Authentication required" },
+                { status: 401 }
+            );
+        }
+
         const { key } = await req.json();
 
         if (!key) {
             return NextResponse.json(
                 { error: "File key is required" },
                 { status: 400 }
+            );
+        }
+
+        // Verify the file belongs to the user's organization
+        if (!key.startsWith(`${orgId}/`)) {
+            return NextResponse.json(
+                { error: "Unauthorized access to file" },
+                { status: 403 }
             );
         }
 
