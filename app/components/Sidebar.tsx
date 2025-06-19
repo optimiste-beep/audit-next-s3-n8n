@@ -6,7 +6,7 @@ import { PT_Sans } from "next/font/google";
 
 import { cn } from "../lib/utils"
 // import { LayoutDashboard, FileUp, ListTodo, ChevronDown, ChevronUp, Database } from "lucide-react";
-import { FileUp, CircleHelp, Database } from "lucide-react";
+import { LayoutGrid, CircleHelp, Webhook, Database } from "lucide-react";
 // import { usePathname } from "next/navigation";
 
 const ptSans = PT_Sans({
@@ -22,15 +22,21 @@ const routes = [
     //     color: "text-zinc-600"
     // },
     {
-        label: "Upload",
-        icon: FileUp,
-        href: "/upload",
+        label: "Get Started",
+        icon: LayoutGrid,
+        href: "/get-started",
         color: "text-zinc-600"
     },
     {
         label: "Storage",
         icon: Database,
         href: "/storage",
+        color: "text-zinc-600"
+    },
+    {
+        label: "Integrations",
+        icon: Webhook,
+        href: "/integrations",
         color: "text-zinc-600"
     },
     {
@@ -59,7 +65,7 @@ const Sidebar = () => {
         <aside className="space-y-4 py-4 flex flex-col h-full bg-[#f1f5f2] text-black">
             <div>
                 <div className="flex justify-center items-center mr-4">
-                    <Link href="/upload" className="flex items-center pl-3 mb-14">
+                    <Link href="/get-started" className="flex items-center pl-3 mb-14">
                         <div className="relative h-10 mr-4">
                             <Image
                                 alt="Logo"

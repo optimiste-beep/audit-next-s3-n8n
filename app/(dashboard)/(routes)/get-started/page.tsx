@@ -160,13 +160,13 @@ export default function UploadPage() {
             {/* Progress indicator */}
             <div className="mb-6">
                 <div className="flex items-center mb-2">
-                    <div className={`flex-none h-8 w-8 rounded-full flex items-center justify-center ${uploadStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'
+                    <div className={`flex-none h-8 w-8 rounded-full flex items-center justify-center ${uploadStep >= 1 ? 'bg-blue-500  text-white' : 'bg-gray-200'
                         }`}>1</div>
                     <div className="flex-1 h-1 mx-2 bg-gray-200">
                         <div className={`h-1 ${uploadStep >= 2 ? 'bg-blue-500' : 'bg-gray-200'}`}
                             style={{ width: uploadStep >= 2 ? '100%' : '0%' }}></div>
                     </div>
-                    <div className={`flex-none h-8 w-8 rounded-full flex items-center justify-center ${uploadStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-200'
+                    <div className={`flex-none h-8 w-8 rounded-full flex items-center justify-center ${uploadStep >= 2 ? 'bg-blue-500  text-white' : 'bg-gray-200'
                         }`}>2</div>
                     <div className="flex-1 h-1 mx-2 bg-gray-200">
                         <div className={`h-1 ${uploadStep >= 3 ? 'bg-blue-500' : 'bg-gray-200'}`}

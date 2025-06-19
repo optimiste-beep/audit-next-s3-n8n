@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useUser, useOrganization } from '@clerk/nextjs';
 
 interface Document {
@@ -17,10 +17,10 @@ export default function StoragePage() {
     const [loading, setLoading] = useState(true);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-    const fetchDocuments = async () => {
+    const fetchDocuments = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/documents');
+            const response = await fetch(`/api/documents?userId=${user?.id}`);
             if (!response.ok) throw new Error(`Error: ${response.status}`);
             const data = await response.json();
             setDocuments(data);
@@ -30,11 +30,12 @@ export default function StoragePage() {
             console.error('Error fetching documents:', error);
         }
         setLoading(false);
-    };
+    }, [user?.id]); // Only add dependencies that are used inside the function
 
     useEffect(() => {
         if (user && organization) fetchDocuments();
-    }, [user, organization]);
+    }, [fetchDocuments, user, organization]); // Include fetchDocuments in the array
+
 
     const handleDelete = async (key: string, name: string) => {
         if (confirm(`Are you sure you want to delete ${name}?`)) {
